@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom';
 import Layout from './Layout';
 import CustomError from './CustomError';
 import CircularProgress from '@material-ui/core/CircularProgress';
-import awsFetcher from '../components/AwsFetcher';
+import {fetchAwsWithErrorHandling} from '../components/AwsFetcher';
 
 const styles = theme => ({
   root: {
@@ -39,19 +39,19 @@ class Statemachines extends React.Component {
   }
 
   componentDidMount() {
-    awsFetcher("ListStateMachines", {
-      maxResults: 1000
-    }).then(
+    fetchAwsWithErrorHandling(
+      "ListStateMachines",
+      {
+        maxResults: 1000
+      },
+      this,
       (result) => {
+        if (!result.stateMachines) {
+          return "Invalid server response, missing 'stateMachines' key in ListStateMachines action output";
+        }
         this.setState({
           isLoaded: true,
           items: result.stateMachines
-        });
-      },
-      (error) => {
-        this.setState({
-          isLoaded: true,
-          error
         });
       }
     )
@@ -60,7 +60,7 @@ class Statemachines extends React.Component {
   render() {
     const { error, isLoaded, items } = this.state;
     if (error) {
-      return <CustomError Title="Exception" Title2="Sometheing went wrong :(" Text="Page is broken" />;
+      return <CustomError Title="Exception" Title2="Something went wrong :(" Text="Page is broken" />;
     }
     let content;
     if (!isLoaded) {

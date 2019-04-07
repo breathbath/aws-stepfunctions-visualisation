@@ -14,6 +14,7 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import NotFound from './NotFound';
 import Graph from './Graph';
 import awsFetcher from '../components/AwsFetcher';
+import {fetchAwsWithErrorHandling} from '../components/AwsFetcher';
 
 const styles = theme => ({
     root: {
@@ -48,36 +49,42 @@ class ExecutionDetails extends React.Component {
             return;
         }
         let executionDetails = {};
-        awsFetcher("DescribeExecution", {
+        fetchAwsWithErrorHandling(
+          "DescribeExecution",
+          {
             executionArn: this.props.match.params['eid']
-          }).then(
-            (result) => {
-                executionDetails = result;
-                awsFetcher("DescribeStateMachineForExecution", {
-                    executionArn: this.props.match.params['eid']
-                  }).then(
-                    (result) => {
-                        this.setState({
-                            isLoaded: true,
-                            stateMachineDetails: result,
-                            executionDetails: executionDetails
-                        });
-                    },
-                    (error) => {
-                      this.setState({
-                        isLoaded: true,
-                        error
-                      });
-                    }
-                  )
-            },
-            (error) => {
-              this.setState({
-                isLoaded: true,
-                error
-              });
+          },
+          this,
+          (result) => {
+            if (!result.name) {
+                return "Invalid server response, missing 'name' key in DescribeExecution action output";
             }
-          )
+            if (!result.input) {
+                return "Invalid server response, missing 'input' key in DescribeExecution action output";
+            }
+            if (!result.output) {
+                return "Invalid server response, missing 'output' key in DescribeExecution action output";
+            }
+            executionDetails = result;
+            fetchAwsWithErrorHandling(
+              "DescribeStateMachineForExecution",
+              {
+                executionArn: this.props.match.params['eid']
+              },
+              this,
+              (result) => {
+                if (!result.name) {
+                    return "Invalid server response, missing 'name' key in DescribeStateMachineForExecution action output";
+                }
+                this.setState({
+                    isLoaded: true,
+                    stateMachineDetails: result,
+                    executionDetails: executionDetails
+                });
+              }
+            )
+          }
+        )
     }
 
     render() {

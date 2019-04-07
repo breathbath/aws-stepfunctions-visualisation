@@ -8,7 +8,7 @@ import Grid from '@material-ui/core/Grid';
 import Card from '@material-ui/core/Card';
 import CardHeader from '@material-ui/core/CardHeader';
 import { CardContent } from '@material-ui/core';
-import awsFetcher from '../components/AwsFetcher';
+import { fetchAwsWithErrorHandling } from '../components/AwsFetcher';
 
 class Graph extends React.Component {
   constructor(props) {
@@ -30,36 +30,41 @@ class Graph extends React.Component {
   }
 
   componentDidMount() {
-    awsFetcher("DescribeStateMachine", {
-      stateMachineArn: this.stateMachineArn
-    }).then(
+    let def = {};
+    fetchAwsWithErrorHandling(
+      "DescribeStateMachine",
+      {
+        stateMachineArn: this.stateMachineArn
+      },
+      this,
       (result) => {
-        let def = JSON.parse(result.definition);
-        awsFetcher("GetExecutionHistory", {
-          executionArn: this.executionArn,
-          maxResults: 1000
-        }).then(
+        if (!result.definition) {
+          return "Invalid server response, missing 'definition' key in DescribeStateMachine action output";
+        }
+        try {
+          def = JSON.parse(result.definition);
+        } catch (e) {
+          return "Invalid server response, invalid json format at 'definition' key in DescribeStateMachine action output: " + e.message;
+        }
+
+        fetchAwsWithErrorHandling(
+          "GetExecutionHistory",
+          {
+            executionArn: this.executionArn,
+            maxResults: 1000
+          },
+          this,
           (result) => {
-            let historyEvents = result.events;
+            if (!result.events) {
+              return "Invalid server response, missing 'events' key in GetExecutionHistory action output";
+            }
             this.setState({
               isLoaded: true,
               stateMachineDefinition: def,
-              historyEvents: historyEvents,
-            });
-          },
-          (error) => {
-            this.setState({
-              isLoaded: true,
-              error
+              historyEvents: result.events,
             });
           }
         )
-      },
-      (error) => {
-        this.setState({
-          isLoaded: true,
-          error
-        });
       }
     )
   }
@@ -209,13 +214,13 @@ class Graph extends React.Component {
     let stateDetails = currentStateObj[cardTitle][stateDetailsPath];
     return (
       <Card className={this.classes.card}>
-      <CardHeader title={cardTitle} />
-      <CardContent>
-        <Typography component="p">
-          {stateDetails[cardTitle]}
-        </Typography>
-      </CardContent>
-    </Card>
+        <CardHeader title={cardTitle} />
+        <CardContent>
+          <Typography component="p">
+            {stateDetails[cardTitle]}
+          </Typography>
+        </CardContent>
+      </Card>
     );
   }
 }

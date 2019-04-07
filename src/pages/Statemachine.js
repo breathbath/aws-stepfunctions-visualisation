@@ -15,7 +15,7 @@ import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
 import Button from '@material-ui/core/Button';
 import Chip from '@material-ui/core/Chip';
-import awsFetcher from '../components/AwsFetcher';
+import {fetchAwsWithErrorHandling} from '../components/AwsFetcher';
 
 const styles = theme => ({
   root: {
@@ -47,35 +47,36 @@ class Statemachine extends React.Component {
   }
 
   componentDidMount() {
-    awsFetcher("DescribeStateMachine", {
-      stateMachineArn: this.props.match.params['id']
-    }).then(
+    let stateMachine = {};
+    fetchAwsWithErrorHandling(
+      "DescribeStateMachine",
+      {
+        stateMachineArn: this.props.match.params['id']
+      },
+      this,
       (result) => {
-        let stateMachine = result;
-        awsFetcher("ListExecutions", {
-              maxResults: 1000,
-              stateMachineArn: this.props.match.params['id']
-        }).then(
+        if (!result.name) {
+          return "Invalid server response, missing 'name' key in DescribeStateMachine action output";
+        }
+        stateMachine = result;
+        fetchAwsWithErrorHandling(
+          "ListExecutions",
+          {
+            maxResults: 1000,
+            stateMachineArn: this.props.match.params['id']
+          },
+          this,
           (result) => {
+            if (!result.executions) {
+              return "Invalid server response, missing 'executions' key in ListExecutions action output";
+            }
             this.setState({
               isLoaded: true,
               items: result.executions,
               stateMachine: stateMachine
             });
-          },
-          (error) => {
-            this.setState({
-              isLoaded: true,
-              error
-            });
           }
         )
-      },
-      (error) => {
-        this.setState({
-          isLoaded: true,
-          error
-        });
       }
     )
   }
