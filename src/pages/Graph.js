@@ -8,6 +8,7 @@ import Grid from '@material-ui/core/Grid';
 import Card from '@material-ui/core/Card';
 import CardHeader from '@material-ui/core/CardHeader';
 import { CardContent } from '@material-ui/core';
+import awsFetcher from '../components/AwsFetcher';
 
 class Graph extends React.Component {
   constructor(props) {
@@ -29,63 +30,38 @@ class Graph extends React.Component {
   }
 
   componentDidMount() {
-    fetch(process.env.REACT_APP_DEV_API_URL, {
-      method: "POST",
-      headers: {
-        'X-Amz-Target': 'AWSStepFunctions.DescribeStateMachine'
-      },
-      body: JSON.stringify({
-        stateMachineArn: this.stateMachineArn
-      })
-    }).then(res => res.json())
-      .then(
-        (result) => {
-          if (result.error) {
-            console.log(result.error);
+    awsFetcher("DescribeStateMachine", {
+      stateMachineArn: this.stateMachineArn
+    }).then(
+      (result) => {
+        let def = JSON.parse(result.definition);
+        awsFetcher("GetExecutionHistory", {
+          executionArn: this.executionArn,
+          maxResults: 1000
+        }).then(
+          (result) => {
+            let historyEvents = result.events;
             this.setState({
               isLoaded: true,
-              error: result.error
+              stateMachineDefinition: def,
+              historyEvents: historyEvents,
             });
-            return;
+          },
+          (error) => {
+            this.setState({
+              isLoaded: true,
+              error
+            });
           }
-
-          let def = JSON.parse(result.definition);
-          fetch(process.env.REACT_APP_DEV_API_URL, {
-            method: "POST",
-            headers: {
-              'X-Amz-Target': 'AWSStepFunctions.GetExecutionHistory'
-            },
-            body: JSON.stringify({
-              executionArn: this.executionArn,
-              maxResults: 1000
-            })
-          }).then(res => res.json())
-            .then(
-              (result) => {
-                let historyEvents = result.events;
-                this.setState({
-                  isLoaded: true,
-                  stateMachineDefinition: def,
-                  historyEvents: historyEvents,
-                });
-              },
-              (error) => {
-                console.log(error);
-                this.setState({
-                  isLoaded: true,
-                  error
-                });
-              }
-            )
-        },
-        (error) => {
-          console.log(error);
-          this.setState({
-            isLoaded: true,
-            error
-          });
-        }
-      )
+        )
+      },
+      (error) => {
+        this.setState({
+          isLoaded: true,
+          error
+        });
+      }
+    )
   }
 
   render() {
@@ -163,7 +139,7 @@ class Graph extends React.Component {
         stateHistoryMap[historyEvent.stateExitedEventDetails.name]['output'] = historyEvent;
       }
 
-      if (historyEvent.type == "ExecutionFailed" && lastExitedStateName) {
+      if (historyEvent.type === "ExecutionFailed" && lastExitedStateName) {
         nodeStyles.push(dFilledNodeStyleFormat.replace("%node", lastExitedStateName).replace("%color", "red"));
         lastExitedStateName = "";
         continue;
@@ -222,7 +198,7 @@ class Graph extends React.Component {
 
   renderIoCard(currentStateObj, cardTitle) {
     let stateDetailsPath = 'stateEnteredEventDetails';
-    if (cardTitle == 'output') {
+    if (cardTitle === 'output') {
       console.log(currentStateObj);
       stateDetailsPath = 'stateExitedEventDetails';
     }

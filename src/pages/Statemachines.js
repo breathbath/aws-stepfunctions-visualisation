@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import Layout from './Layout';
 import CustomError from './CustomError';
 import CircularProgress from '@material-ui/core/CircularProgress';
+import awsFetcher from '../components/AwsFetcher';
 
 const styles = theme => ({
   root: {
@@ -38,33 +39,22 @@ class Statemachines extends React.Component {
   }
 
   componentDidMount() {
-    fetch(process.env.REACT_APP_DEV_API_URL, {
-      method: "POST",
-      headers: {
-        'X-Amz-Target': 'AWSStepFunctions.ListStateMachines'
+    awsFetcher("ListStateMachines", {
+      maxResults: 1000
+    }).then(
+      (result) => {
+        this.setState({
+          isLoaded: true,
+          items: result.stateMachines
+        });
       },
-      body: JSON.stringify({
-        maxResults: 1000
-      })
-    }).then(res => res.json())
-      .then(
-        (result) => {
-          this.setState({
-            isLoaded: true,
-            items: result.stateMachines
-          });
-        },
-        // Note: it's important to handle errors here
-        // instead of a catch() block so that we don't swallow
-        // exceptions from actual bugs in components.
-        (error) => {
-          console.log(error);
-          this.setState({
-            isLoaded: true,
-            error
-          });
-        }
-      )
+      (error) => {
+        this.setState({
+          isLoaded: true,
+          error
+        });
+      }
+    )
   }
 
   render() {

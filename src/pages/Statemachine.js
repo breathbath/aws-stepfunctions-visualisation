@@ -15,6 +15,7 @@ import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
 import Button from '@material-ui/core/Button';
 import Chip from '@material-ui/core/Chip';
+import awsFetcher from '../components/AwsFetcher';
 
 const styles = theme => ({
   root: {
@@ -46,66 +47,37 @@ class Statemachine extends React.Component {
   }
 
   componentDidMount() {
-    let statusCode = 0;
-    fetch(process.env.REACT_APP_DEV_API_URL, {
-      method: "POST",
-      headers: {
-        'X-Amz-Target': 'AWSStepFunctions.DescribeStateMachine'
-      },
-      body: JSON.stringify({
-        stateMachineArn: this.props.match.params['id']
-      })
-    }).then(res => res.json())
-      .then(
-        (result) => {
-          if (result.error) {
-            console.log(result.error);
-            this.setState({
-              isLoaded: true,
-              error: result.error
-            });
-            return;
-          }
-
-          let stateMachine = result;
-          console.log(result);
-        
-          console.log('333');
-          fetch(process.env.REACT_APP_DEV_API_URL, {
-            method: "POST",
-            headers: {
-              'X-Amz-Target': 'AWSStepFunctions.ListExecutions'
-            },
-            body: JSON.stringify({
+    awsFetcher("DescribeStateMachine", {
+      stateMachineArn: this.props.match.params['id']
+    }).then(
+      (result) => {
+        let stateMachine = result;
+        awsFetcher("ListExecutions", {
               maxResults: 1000,
               stateMachineArn: this.props.match.params['id']
-            })
-          }).then(res => res.json())
-            .then(
-              (result) => {
-                this.setState({
-                  isLoaded: true,
-                  items: result.executions,
-                  stateMachine: stateMachine
-                });
-              },
-              (error) => {
-                console.log(error);
-                this.setState({
-                  isLoaded: true,
-                  error
-                });
-              }
-            )
-        },
-        (error) => {
-          console.log(error);
-          this.setState({
-            isLoaded: true,
-            error
-          });
-        }
-      )
+        }).then(
+          (result) => {
+            this.setState({
+              isLoaded: true,
+              items: result.executions,
+              stateMachine: stateMachine
+            });
+          },
+          (error) => {
+            this.setState({
+              isLoaded: true,
+              error
+            });
+          }
+        )
+      },
+      (error) => {
+        this.setState({
+          isLoaded: true,
+          error
+        });
+      }
+    )
   }
 
   render() {
@@ -141,7 +113,7 @@ class Statemachine extends React.Component {
                   </TableCell>
                   <TableCell>
                     <div className={this.classes.root}>
-                      <Chip label={item.status} className={this.classes.chip} color={item.status == "SUCCEEDED" ? "primary": "secondary"} />
+                      <Chip label={item.status} className={this.classes.chip} color={item.status === "SUCCEEDED" ? "primary": "secondary"} />
                     </div>
                   </TableCell>
                   <TableCell>

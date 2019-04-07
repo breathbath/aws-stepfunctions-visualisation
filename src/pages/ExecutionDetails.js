@@ -13,6 +13,7 @@ import CustomError from './CustomError';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import NotFound from './NotFound';
 import Graph from './Graph';
+import awsFetcher from '../components/AwsFetcher';
 
 const styles = theme => ({
     root: {
@@ -47,72 +48,36 @@ class ExecutionDetails extends React.Component {
             return;
         }
         let executionDetails = {};
-        fetch(
-            process.env.REACT_APP_DEV_API_URL,
-            {
-                method: "POST",
-                headers: {
-                    'X-Amz-Target': 'AWSStepFunctions.DescribeExecution'
-                },
-                body: JSON.stringify({
+        awsFetcher("DescribeExecution", {
+            executionArn: this.props.match.params['eid']
+          }).then(
+            (result) => {
+                executionDetails = result;
+                awsFetcher("DescribeStateMachineForExecution", {
                     executionArn: this.props.match.params['eid']
-                })
-            }
-        ).then(res => res.json())
-            .then((result) => {
-                    if (result.error) {
-                        console.log(result.error);
+                  }).then(
+                    (result) => {
                         this.setState({
                             isLoaded: true,
-                            error: result.error
+                            stateMachineDetails: result,
+                            executionDetails: executionDetails
                         });
-                        return;
-                    }
-                    executionDetails = result;
-                    fetch(
-                        process.env.REACT_APP_DEV_API_URL,
-                        {
-                            method: "POST",
-                            headers: {
-                                'X-Amz-Target': 'AWSStepFunctions.DescribeStateMachineForExecution'
-                            },
-                            body: JSON.stringify({
-                                executionArn: this.props.match.params['eid']
-                            })
-                        }
-                    ).then(res => res.json())
-                        .then(
-                            (result) => {
-                                if (result.error) {
-                                    console.log(result.error);
-                                    this.setState({
-                                        isLoaded: true,
-                                        error: result.error
-                                    });
-                                    return;
-                                }
-                                this.setState({
-                                    isLoaded: true,
-                                    stateMachineDetails: result,
-                                    executionDetails: executionDetails
-                                });
-                            },
-                            (error) => {
-                                console.log(error);
-                                this.setState({
-                                    error
-                                });
-                            }
-                        )
-                },
-                (error) => {
-                    console.log(error);
-                    this.setState({
+                    },
+                    (error) => {
+                      this.setState({
                         isLoaded: true,
                         error
-                    });
-                }
-            )
+                      });
+                    }
+                  )
+            },
+            (error) => {
+              this.setState({
+                isLoaded: true,
+                error
+              });
+            }
+          )
     }
 
     render() {
