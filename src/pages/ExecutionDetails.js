@@ -13,7 +13,6 @@ import CustomError from './CustomError';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import NotFound from './NotFound';
 import Graph from './Graph';
-import awsFetcher from '../components/AwsFetcher';
 import {fetchAwsWithErrorHandling} from '../components/AwsFetcher';
 
 const styles = theme => ({
