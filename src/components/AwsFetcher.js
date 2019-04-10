@@ -23,6 +23,13 @@ export default function fetchAws(awsAction, payload) {
 
 function handleError(errorStateHolder, error) {
   console.log(error);
+  if (typeof error == "object") {
+    let err = "Undefined error";
+    if (error["message"] ) {
+      err = error["message"];
+    }
+    error = err;
+  }
   errorStateHolder.setState({
     isLoaded: true,
     error

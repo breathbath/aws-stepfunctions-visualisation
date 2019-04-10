@@ -3,10 +3,10 @@ import PropTypes from 'prop-types';
 import { Graphviz } from 'graphviz-react';
 import Typography from '@material-ui/core/Typography';
 import CustomError from './CustomError';
+import StateCard from './StateCard';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Grid from '@material-ui/core/Grid';
 import Card from '@material-ui/core/Card';
-import CardHeader from '@material-ui/core/CardHeader';
 import { CardContent } from '@material-ui/core';
 import { fetchAwsWithErrorHandling } from '../components/AwsFetcher';
 
@@ -16,7 +16,6 @@ class Graph extends React.Component {
     this.classes = props.classes;
     this.stateMachineArn = props.stateMachineArn;
     this.executionArn = props.executionArn;
-    this.selectedStateId = props.stateId;
     this.state = {
       error: null,
       isLoaded: false,
@@ -25,8 +24,11 @@ class Graph extends React.Component {
         'StartAt': '',
         'States': []
       },
-      historyEvents: []
+      historyEvents: [],
     };
+    this.handleClick = this.handleClick.bind(this);
+    this.stateCard = React.createRef();
+    this.stateHistoryMap = {};
   }
 
   componentDidMount() {
@@ -69,6 +71,19 @@ class Graph extends React.Component {
     )
   }
 
+  handleClick(e) {
+    if (!e.target || !e.target.parentNode || e.target.parentNode.nodeName != "a") {
+      return;
+    }
+    let currentStateName = e.target.parentNode.getAttribute("title");
+    let currentStateObj = this.stateHistoryMap[currentStateName];
+    if (!currentStateObj) {
+      return;
+    }
+    e.preventDefault();
+    this.stateCard.current.setCurrentSmState(currentStateObj);
+  }
+
   render() {
     const { error, isLoaded, stateMachineDefinition, historyEvents } = this.state;
 
@@ -95,8 +110,8 @@ class Graph extends React.Component {
 
     let dGraphFormat = 'digraph  { %defaultStyles %nodeStyles %edges}';
     let dDefaultStylesFormat = 'node [shape="box"]';
-    let dDefaultNodeStyleFormat = '%node [shape="box", URL="%url"]';
-    let dFilledNodeStyleFormat = '%node [fillcolor="%color", shape="box", URL="%url", style="filled"]';
+    let dDefaultNodeStyleFormat = '%node [shape="box", URL="%url", id="%id"]';
+    let dFilledNodeStyleFormat = '%node [fillcolor="%color", shape="box", URL="%url", style="filled", id="%id"]';
     let dEdgeFormat = '%node1 -> %node2';
     let dDottedEdgeFormat = '%node1 -> %node2[style=dashed, color=red]';
 
@@ -104,17 +119,18 @@ class Graph extends React.Component {
     let nodeStyles = [];
     let edges = [];
 
-    let stateHistoryMap = {};
     let state = "";
     for (var stateId in stateMachineDefinition.States) {
       if (!stateMachineDefinition.States.hasOwnProperty(stateId)) {
         continue;
       }
       state = stateMachineDefinition.States[stateId];
-      stateHistoryMap[stateId] = {};
+      this.stateHistoryMap[stateId] = {};
 
       nodeStyles.push(
-        dDefaultNodeStyleFormat.replace("%node", stateId).replace("%url", "/sm/" + this.stateMachineArn + "/e/" + this.executionArn + "/state/" + stateId)
+        dDefaultNodeStyleFormat.replace("%node", stateId)
+        .replace("%url", "/sm/" + this.stateMachineArn + "/e/" + this.executionArn + "/state/" + stateId)
+        .replace("%id", stateId)
       );
       if (state.Next) {
         edges.push(dEdgeFormat.replace("%node1", stateId).replace("%node2", state.Next));
@@ -133,15 +149,19 @@ class Graph extends React.Component {
     let lastExitedStateName = '';
     for (let k = 0; k < historyEvents.length; k++) {
       let historyEvent = historyEvents[k];
-      if (historyEvent.type.endsWith("StateEntered") && historyEvent.stateEnteredEventDetails.name && stateHistoryMap[historyEvent.stateEnteredEventDetails.name]) {
+      if (historyEvent.type.endsWith("StateEntered") && historyEvent.stateEnteredEventDetails.name && this.stateHistoryMap[historyEvent.stateEnteredEventDetails.name]) {
         let stateUrl = "/sm/" + this.stateMachineArn + "/e/" + this.executionArn + "/state/" + historyEvent.stateEnteredEventDetails.name;
-        nodeStyles.push(dFilledNodeStyleFormat.replace("%node", historyEvent.stateEnteredEventDetails.name).replace("%color", "green").replace("%url", stateUrl));
-        stateHistoryMap[historyEvent.stateEnteredEventDetails.name]['input'] = historyEvent;
+        nodeStyles.push(dFilledNodeStyleFormat.replace("%node", historyEvent.stateEnteredEventDetails.name)
+        .replace("%color", "green")
+        .replace("%url", stateUrl)
+        .replace("%id", historyEvent.stateEnteredEventDetails.name)
+        );
+        this.stateHistoryMap[historyEvent.stateEnteredEventDetails.name]['input'] = historyEvent;
       }
 
-      if (historyEvent.type.endsWith("StateExited") && historyEvent.stateExitedEventDetails.name && stateHistoryMap[historyEvent.stateExitedEventDetails.name]) {
+      if (historyEvent.type.endsWith("StateExited") && historyEvent.stateExitedEventDetails.name && this.stateHistoryMap[historyEvent.stateExitedEventDetails.name]) {
         lastExitedStateName = historyEvent.stateExitedEventDetails.name;
-        stateHistoryMap[historyEvent.stateExitedEventDetails.name]['output'] = historyEvent;
+        this.stateHistoryMap[historyEvent.stateExitedEventDetails.name]['output'] = historyEvent;
       }
 
       if (historyEvent.type === "ExecutionFailed" && lastExitedStateName) {
@@ -151,76 +171,22 @@ class Graph extends React.Component {
       }
     }
 
-    let currentStateObj = stateHistoryMap[this.selectedStateId];
-
     dGraph = dGraph.replace("%nodeStyles", nodeStyles.join(' '));
     dGraph = dGraph.replace("%edges", edges.join(' '));
 
-    let renderedStateCard = (
-      <CardContent>
-        <Typography variant="h5" gutterBottom>
-          Please select a step on the graph to see it's i/o
-        </Typography>
-      </CardContent>
-    );
+    let currentStateObj = this.stateHistoryMap[this.props.stateId];
 
-    if (currentStateObj && currentStateObj.input) {
-      renderedStateCard = (
-        <CardContent>
-          <Typography variant="h5" gutterBottom>
-            Selected state: {currentStateObj.input.stateEnteredEventDetails.name}
-          </Typography>
-          <Grid container spacing={16}>
-            <Grid item xs>
-              {this.renderIoCard(currentStateObj, 'input')}
-            </Grid>
-          </Grid>
-          <Grid container spacing={16}>
-            <Grid item xs>
-              {this.renderIoCard(currentStateObj, 'output')}
-            </Grid>
-          </Grid>
-        </CardContent>
-      );
-    }
     return (
       <Grid container spacing={16}>
         <Grid item xs>
           <Card>
             <CardContent>
-              <div>{comment}<Graphviz dot={dGraph} /></div>
+              <div onClick={this.handleClick}>{comment}<Graphviz dot={dGraph} /></div>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs>
-          <Card>
-            {renderedStateCard}
-          </Card>
-        </Grid>
+        <StateCard ref={this.stateCard} classes={this.classes} currentStateObj={currentStateObj}/>
       </Grid>
-    );
-  }
-
-  renderIoCard(currentStateObj, cardTitle) {
-    let stateDetailsPath = 'stateEnteredEventDetails';
-    if (cardTitle === 'output') {
-      console.log(currentStateObj);
-      stateDetailsPath = 'stateExitedEventDetails';
-    }
-
-    if (!currentStateObj || !currentStateObj[cardTitle] || !currentStateObj[cardTitle][stateDetailsPath]) {
-      return null;
-    }
-    let stateDetails = currentStateObj[cardTitle][stateDetailsPath];
-    return (
-      <Card className={this.classes.card}>
-        <CardHeader title={cardTitle} />
-        <CardContent>
-          <Typography component="p">
-            {stateDetails[cardTitle]}
-          </Typography>
-        </CardContent>
-      </Card>
     );
   }
 }
