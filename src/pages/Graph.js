@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { withStyles } from '@material-ui/core/styles';
 import { Graphviz } from 'graphviz-react';
 import Typography from '@material-ui/core/Typography';
 import CustomError from './CustomError';
@@ -10,19 +11,29 @@ import Card from '@material-ui/core/Card';
 import { CardContent } from '@material-ui/core';
 import { fetchAwsWithErrorHandling } from '../components/AwsFetcher';
 
+const styles = theme => ({
+  graphContent: {
+    width: '100%',
+    overflow: 'auto',
+  },
+  svg: {
+    overflow: 'auto',
+  }
+});
+
 class Graph extends React.Component {
-  dGraphFormat = 'digraph  { %defaultStyles %nodeStyles %edges}';
-  dDefaultStylesFormat = 'node [shape="box"]';
+  graphFormat = 'digraph  { %defaultStyles %nodeStyles %edges}';
+  defaultStylesFormat = 'node [shape="box"]';
   startEndNodeStyleFormat = '%node [shape="circle", id="%id", fillcolor="%color", style="filled"]';
-  dDefaultNodeStyleFormat = '%node [shape="box", URL="%url", id="%id"]';
-  dFailedNodeStyleFormat = '%node [shape="box", URL="%url", id="%id", style=dashed]';
-  dFilledNodeStyleFormat = '%node [fillcolor="%color", shape="box", URL="%url", style="filled", id="%id"]';
-  dEdgeFormat = '%node1 -> %node2';
-  dDottedEdgeFormat = '%node1 -> %node2[style=dashed, color=red]';
+  defaultNodeStyleFormat = '%node [shape="box", URL="%url", id="%id"]';
+  failedNodeStyleFormat = '%node [shape="box", URL="%url", id="%id", style=dashed]';
+  filledNodeStyleFormat = '%node [fillcolor="%color", shape="box", URL="%url", style="filled", id="%id"]';
+  edgeFormat = '%node1 -> %node2';
+  dottedEdgeFormat = '%node1 -> %node2[style=dashed, color=red]';
 
   constructor(props) {
     super(props);
-    this.classes = props.classes;
+    this.clss = props.classes;
     this.stateMachineArn = props.stateMachineArn;
     this.executionArn = props.executionArn;
     this.state = {
@@ -36,7 +47,7 @@ class Graph extends React.Component {
       historyEvents: [],
     };
     this.handleClick = this.handleClick.bind(this);
-    this.stateCard = React.createRef();
+    this.stateCard = React.createRef({classes: props.classes});
     this.stateHistoryMap = {};
   }
 
@@ -94,7 +105,7 @@ class Graph extends React.Component {
   }
 
   buildStatesGraph(states, nodeStyles, edges, startStateName, endStateName, entryPointStateName) {
-    edges.push(this.dEdgeFormat.replace("%node1", startStateName).replace("%node2", entryPointStateName));
+    edges.push(this.edgeFormat.replace("%node1", startStateName).replace("%node2", entryPointStateName));
 
     let state = {};
     for (var stateId in states) {
@@ -103,26 +114,26 @@ class Graph extends React.Component {
       }
       state = states[stateId];
       this.stateHistoryMap[stateId] = {};
-      let nodeStyleFormat = this.dDefaultNodeStyleFormat;
+      let nodeStyleFormat = this.defaultNodeStyleFormat;
       if (state.Next && state.Type !== "Parallel") {
-        edges.push(this.dEdgeFormat.replace("%node1", stateId).replace("%node2", state.Next));
+        edges.push(this.edgeFormat.replace("%node1", stateId).replace("%node2", state.Next));
       }
       if (state.Catch && state.Catch.length > 0) {
-        nodeStyleFormat = this.dFailedNodeStyleFormat;
+        nodeStyleFormat = this.failedNodeStyleFormat;
         for (let k = 0; k < state.Catch.length; k++) {
           let curCatch = state.Catch[k];
           if (!curCatch.Next) {
             continue;
           }
-          edges.push(this.dDottedEdgeFormat.replace("%node1", stateId).replace("%node2", curCatch.Next));
+          edges.push(this.dottedEdgeFormat.replace("%node1", stateId).replace("%node2", curCatch.Next));
         }
       }
 
       if (state.Type === "Succeed" || state.End) {
-        edges.push(this.dEdgeFormat.replace("%node1", stateId).replace("%node2", endStateName));
+        edges.push(this.edgeFormat.replace("%node1", stateId).replace("%node2", endStateName));
       } else if (state.Type === "Fail") {
-        nodeStyleFormat = this.dFailedNodeStyleFormat;
-        edges.push(this.dDottedEdgeFormat.replace("%node1", stateId).replace("%node2", endStateName));
+        nodeStyleFormat = this.failedNodeStyleFormat;
+        edges.push(this.dottedEdgeFormat.replace("%node1", stateId).replace("%node2", endStateName));
       } else if (state.Type === "Parallel") {
         for (var branchStateIndex in state.Branches) {
           let subStateMachine = state.Branches[branchStateIndex];
@@ -132,8 +143,8 @@ class Graph extends React.Component {
 
       nodeStyles.push(
         nodeStyleFormat.replace("%node", stateId)
-        .replace("%url", "/sm/" + this.stateMachineArn + "/e/" + this.executionArn + "/state/" + stateId)
-        .replace("%id", stateId)
+          .replace("%url", "/sm/" + this.stateMachineArn + "/e/" + this.executionArn + "/state/" + stateId)
+          .replace("%id", stateId)
       );
     }
   }
@@ -150,7 +161,7 @@ class Graph extends React.Component {
     }
 
     if (!isLoaded) {
-      return <div className={this.classes.progressContainer}><CircularProgress className={this.classes.progress} /></div>;
+      return <div className={this.clss.progressContainer}><CircularProgress className={this.clss.progress} /></div>;
     }
 
     let comment = null;
@@ -162,20 +173,20 @@ class Graph extends React.Component {
       return (<div>{comment}</div>);
     }
 
-    let dGraph = this.dGraphFormat.replace("%defaultStyles", this.dDefaultStylesFormat);
+    let dGraph = this.graphFormat.replace("%defaultStyles", this.defaultStylesFormat);
     let nodeStyles = [];
     let edges = [];
 
     nodeStyles.push(
       this.startEndNodeStyleFormat.replace("%node", 'Start')
-      .replace("%color", 'orange')
-      .replace("%id", 'Start')
+        .replace("%color", 'orange')
+        .replace("%id", 'Start')
     );
 
     nodeStyles.push(
       this.startEndNodeStyleFormat.replace("%node", 'End')
-      .replace("%color", 'orange')
-      .replace("%id", 'End')
+        .replace("%color", 'orange')
+        .replace("%id", 'End')
     );
     this.buildStatesGraph(stateMachineDefinition.States, nodeStyles, edges, 'Start', 'End', stateMachineDefinition.StartAt)
 
@@ -184,10 +195,10 @@ class Graph extends React.Component {
       let historyEvent = historyEvents[k];
       if (historyEvent.type.endsWith("StateEntered") && historyEvent.stateEnteredEventDetails.name && this.stateHistoryMap[historyEvent.stateEnteredEventDetails.name]) {
         let stateUrl = "/sm/" + this.stateMachineArn + "/e/" + this.executionArn + "/state/" + historyEvent.stateEnteredEventDetails.name;
-        nodeStyles.push(this.dFilledNodeStyleFormat.replace("%node", historyEvent.stateEnteredEventDetails.name)
-        .replace("%color", "green")
-        .replace("%url", stateUrl)
-        .replace("%id", historyEvent.stateEnteredEventDetails.name)
+        nodeStyles.push(this.filledNodeStyleFormat.replace("%node", historyEvent.stateEnteredEventDetails.name)
+          .replace("%color", "green")
+          .replace("%url", stateUrl)
+          .replace("%id", historyEvent.stateEnteredEventDetails.name)
         );
         this.stateHistoryMap[historyEvent.stateEnteredEventDetails.name]['input'] = historyEvent;
       }
@@ -198,7 +209,7 @@ class Graph extends React.Component {
       }
 
       if (historyEvent.type === "ExecutionFailed" && lastExitedStateName) {
-        nodeStyles.push(this.dFilledNodeStyleFormat.replace("%node", lastExitedStateName).replace("%color", "red"));
+        nodeStyles.push(this.filledNodeStyleFormat.replace("%node", lastExitedStateName).replace("%color", "red"));
         lastExitedStateName = "";
         continue;
       }
@@ -212,13 +223,13 @@ class Graph extends React.Component {
     return (
       <Grid container spacing={16}>
         <Grid item xs>
-          <Card>
+          <Card className={this.clss.graphContent}>
             <CardContent>
-              <div onClick={this.handleClick}>{comment}<Graphviz dot={dGraph} options={{fit:true, width:"600", height:"700"}} /></div>
+              <div onClick={this.handleClick}>{comment}<Graphviz dot={dGraph} options={{ fit: true, width: "600", height:"800",scale:1}} /></div>
             </CardContent>
           </Card>
         </Grid>
-        <StateCard ref={this.stateCard} classes={this.classes} currentStateObj={currentStateObj}/>
+        <StateCard ref={this.stateCard} currentStateObj={currentStateObj} />
       </Grid>
     );
   }
@@ -229,4 +240,4 @@ Graph.propTypes = {
   stateMachineArn: PropTypes.string.isRequired,
 };
 
-export default Graph;
+export default withStyles(styles)(Graph);

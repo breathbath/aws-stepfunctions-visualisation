@@ -152,7 +152,7 @@ class ExecutionDetails extends React.Component {
                             </Card>
                         </Grid>
                     </Grid>
-                    <Graph executionArn={this.executionArn} stateId={this.stateId} stateMachineArn={this.stateMachineArn} classes={this.classes} />
+                    <Graph executionArn={this.executionArn} stateId={this.stateId} stateMachineArn={this.stateMachineArn} clss={this.classes} />
                 </div>
                 <Grid container spacing={16}>
                     <Grid item xs>

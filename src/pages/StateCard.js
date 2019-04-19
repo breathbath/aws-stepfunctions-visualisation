@@ -8,7 +8,6 @@ import Grid from '@material-ui/core/Grid';
 class StateCard extends React.Component {
     constructor(props) {
         super(props);
-        this.classes = props.classes;
         this.state = {
             currentStateObj: null
         };
@@ -31,7 +30,7 @@ class StateCard extends React.Component {
         }
         let stateDetails = currentStateObj[cardTitle][stateDetailsPath];
         return (
-            <Card className={this.classes.card}>
+            <Card>
                 <CardHeader title={cardTitle} />
                 <CardContent>
                     <Typography component="p">
