@@ -46,7 +46,7 @@ class Statemachines extends React.Component {
       },
       this,
       (result) => {
-        if (!result.stateMachines) {
+        if (result.stateMachines === undefined) {
           return "Invalid server response, missing 'stateMachines' key in ListStateMachines action output";
         }
         this.setState({

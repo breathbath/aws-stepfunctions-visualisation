@@ -58,10 +58,10 @@ class ExecutionDetails extends React.Component {
             if (!result.name) {
                 return "Invalid server response, missing 'name' key in DescribeExecution action output";
             }
-            if (!result.input) {
+            if (result.input === undefined) {
                 return "Invalid server response, missing 'input' key in DescribeExecution action output";
             }
-            if (!result.output) {
+            if (result.output === undefined) {
                 return "Invalid server response, missing 'output' key in DescribeExecution action output";
             }
             executionDetails = result;

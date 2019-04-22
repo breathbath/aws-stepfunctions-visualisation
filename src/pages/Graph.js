@@ -115,7 +115,7 @@ class Graph extends React.Component {
       state = states[stateId];
       this.stateHistoryMap[stateId] = {};
       let nodeStyleFormat = this.defaultNodeStyleFormat;
-      if (state.Next && state.Type !== "Parallel") {
+      if (state.Next && state.Type !== "Parallel" && state.Type !== "Choice") {
         edges.push(this.edgeFormat.replace("%node1", stateId).replace("%node2", state.Next));
       }
       if (state.Catch && state.Catch.length > 0) {
@@ -138,6 +138,16 @@ class Graph extends React.Component {
         for (var branchStateIndex in state.Branches) {
           let subStateMachine = state.Branches[branchStateIndex];
           this.buildStatesGraph(subStateMachine.States, nodeStyles, edges, stateId, state.Next, subStateMachine.StartAt);
+        }
+      } else if (state.Type === "Choice") {
+        if (state.Default) {
+          edges.push(this.edgeFormat.replace("%node1", stateId).replace("%node2", state.Default));
+        }
+        if (state.Choices.length > 0) {
+          for (var choiceStateIndex in state.Choices) {
+            let choiceState = state.Choices[choiceStateIndex];
+            edges.push(this.edgeFormat.replace("%node1", stateId).replace("%node2", choiceState.Next));
+          }
         }
       }
 

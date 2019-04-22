@@ -55,7 +55,7 @@ class Statemachine extends React.Component {
       },
       this,
       (result) => {
-        if (!result.name) {
+        if (result.name === undefined) {
           return "Invalid server response, missing 'name' key in DescribeStateMachine action output";
         }
         stateMachine = result;
