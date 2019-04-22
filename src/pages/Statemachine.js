@@ -88,6 +88,11 @@ class Statemachine extends React.Component {
     }
 
     let content;
+    const options = {
+      year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', second: 'numeric',
+      hour12: false
+    };
     if (!isLoaded) {
       content = <div className={this.classes.progressContainer}><CircularProgress className={this.classes.progress} /></div>;
     } else {
@@ -118,10 +123,10 @@ class Statemachine extends React.Component {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {item.startDate}
+                    {new Intl.DateTimeFormat('en-US', options).format(new Date(item.startDate*1000))}
                   </TableCell>
                   <TableCell>
-                    {item.stopDate}
+                    {new Intl.DateTimeFormat('en-US', options).format(new Date(item.stopDate*1000))}
                   </TableCell>
                 </TableRow>
               ))}

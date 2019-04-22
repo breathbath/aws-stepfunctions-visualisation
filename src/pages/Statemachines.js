@@ -66,6 +66,11 @@ class Statemachines extends React.Component {
     if (!isLoaded) {
       content = <div className={this.classes.progressContainer}><CircularProgress className={this.classes.progress} /></div>;
     } else {
+    const options = {
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', second: 'numeric',
+        hour12: false
+      };
       content = (
         <Paper className={this.classes.root}>
           <Table className={this.classes.table}>
@@ -85,7 +90,7 @@ class Statemachines extends React.Component {
                   <TableCell>
                     <Link to={"/sm/" + item.stateMachineArn}>{item.stateMachineArn}</Link>
                   </TableCell>
-                  <TableCell>{item.creationDate}</TableCell>
+                  <TableCell>{new Intl.DateTimeFormat('en-US', options).format(new Date(item.creationDate*1000))}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
